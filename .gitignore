@@ -1,3 +1,8 @@
+# ignore pycharm cache files
+.idea
+
+
+# original gitignore files
 processed_result/.ipy*
 processed_result/pickle*
 models/

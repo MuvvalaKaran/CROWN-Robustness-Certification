@@ -36,75 +36,76 @@ if __name__ == "__main__":
     #### parser ####
     parser = argparse.ArgumentParser(description='compute activation bound for CIFAR and MNIST')
     parser.add_argument('--model', 
-                default="mnist",
-                choices=["mnist", "cifar"],
-                help='model to be used')
+                        default="mnist",
+                        choices=["mnist", "cifar"],
+                        help='model to be used')
     parser.add_argument('--eps',
-                default = 0.005,
-                type = float,
-                help = "epsilon for verification")
+                        default=0.005,
+                        type=float,
+                        help="epsilon for verification")
     parser.add_argument('--hidden',
-                default = 1024,
-                type = int,
-                help = "number of hidden neurons per layer")
+                        default=1024,
+                        type=int,
+                        help="number of hidden neurons per layer")
     parser.add_argument('--numlayer',
-                default = 2,
-                type = int,
-                help='number of layers in the model')
+                        default=2,
+                        type=int,
+                        help='number of layers in the model')
     parser.add_argument('--numimage',
-                default = 10,
-                type = int,
-                help='number of images to run')
+                        default=10,
+                        type=int,
+                        help='number of images to run')
     parser.add_argument('--startimage',
-                default = 0,
-                type = int,
-                help='start image')
+                        default=0,
+                        type=int,
+                        help='start image')
     parser.add_argument('--norm',
-                default = "i",
-                type = str,
-                choices = ["i", "1", "2"],
-                help='perturbation norm: "i": Linf, "1": L1, "2": L2')
+                        default="i",
+                        type=str,
+                        choices=["i", "1", "2"],
+                        help='perturbation norm: "i": Linf, "1": L1, "2": L2')
     parser.add_argument('--method',
-                default = "ours",
-                type = str,
-                choices = ["general", "ours", "adaptive", "spectral", "naive"],
-                help='"ours": our proposed bound, "spectral": spectral norm bounds, "naive": naive bound')
+                        default="ours",
+                        type=str,
+                        choices=["general", "ours", "adaptive", "spectral", "naive"],
+                        help='"ours": our proposed bound, "spectral": spectral norm bounds, "naive": naive bound')
     parser.add_argument('--lipsbnd',
-                type = str,
-                default = "disable",
-                choices = ["disable", "fast", "naive", "both"],
-                help='compute Lipschitz bound, after using some method to compute neuron lower/upper bounds')
+                        type=str,
+                        default="disable",
+                        choices=["disable", "fast", "naive", "both"],
+                        help='compute Lipschitz bound, after using some method to compute neuron lower/upper bounds')
     parser.add_argument('--lipsteps',
-                type = int,
-                default = 30,
-                help='number of steps to use in lipschitz bound')
+                        type=int,
+                        default=30,
+                        help='number of steps to use in lipschitz bound')
     parser.add_argument('--LP',
-                action = "store_true",
-                help='use LP to get bounds for final output')
+                        action="store_true",
+                        help='use LP to get bounds for final output')
     parser.add_argument('--LPFULL',
-                action = "store_true",
-                help='use FULL LP to get bounds for output')
+                        action="store_true",
+                        help='use FULL LP to get bounds for output')
     parser.add_argument('--quad',
-                action = "store_true",
-                help='use quadratic bound to imporve 2nd layer output')
+                        action="store_true",
+                        help='use quadratic bound to imporve 2nd layer output')
     parser.add_argument('--warmup',
-                action = "store_true",
-                help='warm up before the first iteration')
+                        default=" ",
+                        action="store_true",
+                        help='warm up before the first iteration')
     parser.add_argument('--modeltype',
-                default = "vanilla",
-                choices = ["vanilla", "dropout", "distill", "adv_retrain"],
-                help = "select model type")
+                        default="vanilla",
+                        choices=["vanilla", "dropout", "distill", "adv_retrain"],
+                        help="select model type")
     parser.add_argument('--targettype',
-                default="least",
-                choices = ["untargeted", "least", "top2", "random"],
-                help='untargeted minimum distortion') 
+                        default="untargeted",
+                        choices=["untargeted", "least", "top2", "random"],
+                        help='untargeted minimum distortion')
     parser.add_argument('--steps',
-                default = 15,
-                type = int,
-                help = 'how many steps to binary search')
+                        default=15,
+                        type=int,
+                        help='how many steps to binary search')
     parser.add_argument('--activation',
-                default="relu",
-                choices=["relu", "tanh", "sigmoid", "arctan", "elu", "hard_sigmoid", "softplus"])
+                        default="relu",
+                        choices=["relu", "tanh", "sigmoid", "arctan", "elu", "hard_sigmoid", "softplus"])
 
     args = parser.parse_args()
     nhidden = args.hidden
@@ -155,7 +156,8 @@ if __name__ == "__main__":
             model = nl.NLayerModel([nhidden] * (args.numlayer - 1), modelfile, activation=activation)
         elif args.model == "cifar":
             data = CIFAR()
-            model = nl.NLayerModel([nhidden] * (args.numlayer - 1), modelfile, image_size=32, image_channel=3, activation=activation)
+            model = nl.NLayerModel([nhidden] * (args.numlayer - 1), modelfile, image_size=32, image_channel=3,
+                                   activation=activation)
         else:
             raise(RuntimeError("unknown model: "+args.model))
                 
@@ -170,7 +172,13 @@ if __name__ == "__main__":
         # weights[i-1] gives the ith layer of weight and so on
         weights, biases = get_weights_list(model)        
         
-        inputs, targets, true_labels, true_ids, img_info = generate_data(data, samples=args.numimage, targeted=targeted, random_and_least_likely = True, target_type = target_type, predictor=model.model.predict, start=args.startimage)
+        inputs, targets, true_labels, true_ids, img_info = generate_data(data,
+                                                                         samples=args.numimage,
+                                                                         targeted=targeted,
+                                                                         random_and_least_likely=True,
+                                                                         target_type=target_type,
+                                                                         predictor=model.model.predict,
+                                                                         start=args.startimage)
         # get the logit layer predictions
         preds = model.model.predict(inputs)
 
@@ -183,13 +191,37 @@ if __name__ == "__main__":
             print("warming up...")
             sys.stdout.flush()
             if args.method == "spectral":
-                robustness_gx = spectral_bound(weights, biases, 0, 1, inputs[0], preds[0], args.numlayer, args.norm, not targeted)
+                robustness_gx = spectral_bound(weights,
+                                               biases,
+                                               0,
+                                               1,
+                                               inputs[0],
+                                               preds[0],
+                                               args.numlayer,
+                                               args.norm,
+                                               not targeted)
             else:
-                compute_worst_bound(weights, biases, 0, 1, inputs[0], preds[0], args.numlayer,args.norm, 0.01, args.method, args.lipsbnd, args.LP, args.LPFULL, not targeted, args.quad)
+                compute_worst_bound(weights=weights,
+                                    biases=biases,
+                                    pred_label=0,
+                                    target_label=1,
+                                    x0=inputs[0],
+                                    predictions=preds[0],
+                                    numlayer=args.numlayer,
+                                    p=args.norm,
+                                    eps=0.01,
+                                    method=args.method,
+                                    lipsbnd=args.lipsbnd,
+                                    is_LP=args.LP,
+                                    is_LPFULL=args.LPFULL,
+                                    untargeted=not targeted,
+                                    use_quad=args.quad)
+
         print("starting robustness verification on {} images!".format(len(inputs)))
         sys.stdout.flush()
         sys.stderr.flush()
         total_time_start = time.time()
+
         for i in range(len(inputs)):
             Nsamp += 1                
             p = args.norm # p = "1", "2", or "i"
@@ -198,13 +230,33 @@ if __name__ == "__main__":
             start = time.time()
             # Spectral bound: no binary search needed
             if args.method == "spectral":
-                robustness_gx = spectral_bound(weights, biases, predict_label, target_label, inputs[i], preds[i], args.numlayer, p, not targeted)
+                robustness_gx = spectral_bound(weights,
+                                               biases,
+                                               predict_label,
+                                               target_label,
+                                               inputs[i],
+                                               preds[i],
+                                               args.numlayer,
+                                               p,
+                                               not targeted)
             # compute worst case bound
             # no need to pass in sess, model and data
             # just need to pass in the weights, true label, norm, x0, prediction of x0, number of layer and eps
             elif args.lipsbnd != "disable":
                 # You can always use the "multi" version of Lipschitz bound to improve results (about 30%).
-                robustness_gx = compute_worst_bound_multi(weights, biases, predict_label, target_label, inputs[i], preds[i], args.numlayer, p, args.eps, args.lipsteps, args.method, args.lipsbnd, not targeted)
+                robustness_gx = compute_worst_bound_multi(weights,
+                                                          biases,
+                                                          predict_label,
+                                                          target_label,
+                                                          inputs[i],
+                                                          preds[i],
+                                                          args.numlayer,
+                                                          p,
+                                                          args.eps,
+                                                          args.lipsteps,
+                                                          args.method,
+                                                          args.lipsbnd,
+                                                          not targeted)
                 eps = args.eps
                 # if initial eps is too small, then increase it
                 if robustness_gx == eps:
@@ -213,7 +265,19 @@ if __name__ == "__main__":
                         print("==============================")
                         print("increase eps to {}".format(eps))
                         print("==============================")
-                        robustness_gx = compute_worst_bound_multi(weights, biases, predict_label, target_label, inputs[i], preds[i], args.numlayer, p, eps, args.lipsteps, args.method, args.lipsbnd, not targeted)             
+                        robustness_gx = compute_worst_bound_multi(weights,
+                                                                  biases,
+                                                                  predict_label,
+                                                                  target_label,
+                                                                  inputs[i],
+                                                                  preds[i],
+                                                                  args.numlayer,
+                                                                  p,
+                                                                  eps,
+                                                                  args.lipsteps,
+                                                                  args.method,
+                                                                  args.lipsbnd,
+                                                                  not targeted)
                 # if initial eps is too large, then decrease it
                 elif robustness_gx <= eps / 5:
                     while robustness_gx <= eps / 5:
@@ -221,7 +285,19 @@ if __name__ == "__main__":
                         print("==============================")
                         print("increase eps to {}".format(eps))
                         print("==============================")
-                        robustness_gx = compute_worst_bound_multi(weights, biases, predict_label, target_label, inputs[i], preds[i], args.numlayer, p, eps, args.lipsteps, args.method, args.lipsbnd, not targeted)             
+                        robustness_gx = compute_worst_bound_multi(weights,
+                                                                  biases,
+                                                                  predict_label,
+                                                                  target_label,
+                                                                  inputs[i],
+                                                                  preds[i],
+                                                                  args.numlayer,
+                                                                  p,
+                                                                  eps,
+                                                                  args.lipsteps,
+                                                                  args.method,
+                                                                  args.lipsbnd,
+                                                                  not targeted)
             else:
                 gap_gx = 100
                 eps = args.eps
@@ -234,13 +310,28 @@ if __name__ == "__main__":
                 # perform binary search
                 eps_gx_UB = np.inf
                 eps_gx_LB = 0.0
-                is_pos = True
-                is_neg = True
+                # is_pos = True
+                # is_neg = True
                 # eps = eps_gx_LB*2
-                eps = args.eps
+                # eps = args.eps
                 while eps_gx_UB-eps_gx_LB > 0.00001:
-                    gap_gx, _, _ = compute_worst_bound(weights, biases, predict_label, target_label, inputs[i], preds[i], args.numlayer, p, eps, args.method, "disable", args.LP, args.LPFULL, not targeted, args.quad, activation = args.activation)
-                    print("[L2][binary search] step = {}, eps = {:.5f}, gap_gx = {:.2f}".format(counter,eps,gap_gx))
+                    gap_gx, _, _ = compute_worst_bound(weights=weights,
+                                                       biases=biases,
+                                                       pred_label=predict_label,
+                                                       target_label=target_label,
+                                                       x0=inputs[i],
+                                                       predictions=preds[i],
+                                                       numlayer=args.numlayer,
+                                                       p=p,
+                                                       eps=eps,
+                                                       method=args.method,
+                                                       lipsbnd="disable",
+                                                       is_LP=args.LP,
+                                                       is_LPFULL=args.LPFULL,
+                                                       untargeted=not targeted,
+                                                       use_quad=args.quad,
+                                                       activation=args.activation)
+                    print("[L2][binary search] step = {}, eps = {:.5f}, gap_gx = {:.2f}".format(counter, eps, gap_gx))
                     if gap_gx > 0:
                         if gap_gx < 0.01:
                             eps_gx_LB = eps

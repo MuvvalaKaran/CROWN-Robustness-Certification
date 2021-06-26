@@ -207,7 +207,9 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws,bs,UBs,LBs,neuron_st
     x_UB = np.empty_like(UBs[0])
     x_LB = np.empty_like(LBs[0])
     
-    # this computation (UB1_final, LB1_final) should be the same as UB_final and LB_final. However, this computation seem to have numerical error due to the different scale of x0 and eps then the dual norm calculation
+    # this computation (UB1_final, LB1_final) should be the same as UB_final and LB_final.
+    # However, this computation seem to have numerical error due to the different scale of x0 and eps then
+    # the dual norm calculation
 
     Ax0_UB = np.dot(A_UB,x0)
     Ax0_LB = np.dot(A_LB,x0)
@@ -622,7 +624,22 @@ def compute_worst_bound_multi(weights, biases, pred_label, target_label, x0, pre
 """
 Main computing function 1
 """
-def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictions, numlayer, p="i", eps = 0.005, method="ours", lipsbnd="disable", is_LP=False, is_LPFULL=False, untargeted = False, use_quad = False, activation = "relu"):
+def compute_worst_bound(weights,
+                        biases,
+                        pred_label,
+                        target_label,
+                        x0,
+                        predictions,
+                        numlayer,
+                        p="i",
+                        eps = 0.005,
+                        method="ours",
+                        lipsbnd="disable",
+                        is_LP=False,
+                        is_LPFULL=False,
+                        untargeted = False,
+                        use_quad = False,
+                        activation = "relu"):
     ### input example x0 
     # 784 by 1 (cifar: 3072 by 1)
     x0 = x0.flatten().astype(np.float32)
@@ -656,8 +673,7 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
     LBs.append(LB_N0)
     #save_bnd = {'UB_N0': UB_N0, 'LB_N0': LB_N0}
     neuron_states = []
-    
-       
+
     c = pred_label # c = 0~9
     j = target_label 
 
@@ -676,7 +692,6 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
         assert activation == "relu"
         diags = init_layer_bound_relax_matrix_huan(weights)
 
-    
     ## weights and biases are already transposed
     # output of get_layer_bound can be raw UB/LB or ReLU(UB/LB) by assigning the flag
     # output of get_layer_bound_relax is raw UB/LB
@@ -712,11 +727,23 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
             # first time compute the bound of 1st layer
             if num == 0: # get the raw bound
                 if is_LPFULL:
-                    UB, LB, _ = get_layer_bound_LP(weights[:num+1],biases[:num+1],[UBs[0]],
-                    [LBs[0]],x0,eps,p,neuron_states,1,c,j,True,False)
+                    UB, LB, _ = get_layer_bound_LP(weights[:num+1],
+                                                   biases[:num+1],
+                                                   [UBs[0]],
+                                                   [LBs[0]],
+                                                   x0,
+                                                   eps,
+                                                   p,
+                                                   neuron_states,
+                                                   1,
+                                                   c,
+                                                   j,
+                                                   True,
+                                                   False)
                     #UB, LB = get_layer_bound(weights[num],biases[num],UBs[num],LBs[num],True)
                 else:
-                    UB, LB = get_layer_bound(weights[num],biases[num],UBs[num],LBs[num],True,x0,eps,p_n)
+                    UB, LB = get_layer_bound(weights[num], biases[num], UBs[num], LBs[num], True, x0, eps, p_n)
+
                 # save those pre-ReLU bounds
                 preReLU_UB.append(UB)
                 preReLU_LB.append(LB)
@@ -739,35 +766,67 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
             elif num != numlayer - 1:
                 
                 if is_LPFULL:
-                    UB, LB, _ = get_layer_bound_LP(weights[:num+1],biases[:num+1],[UBs[0]]+preReLU_UB,
-                    [LBs[0]]+preReLU_LB,x0,eps,p,neuron_states,num+1,c,j,True,False)
+                    UB, LB, _ = get_layer_bound_LP(weights[:num+1],
+                                                   biases[:num+1],
+                                                   [UBs[0]]+preReLU_UB,
+                                                   [LBs[0]]+preReLU_LB,
+                                                   x0,
+                                                   eps,
+                                                   p,
+                                                   neuron_states,
+                                                   num+1,
+                                                   c,
+                                                   j,
+                                                   True,
+                                                   False)
                 else:
                     # UB, LB = get_layer_bound_relax_matrix_huan(weights[:num+1],biases[:num+1],
                     if method == "ours":
-                        UB, LB = get_layer_bound_relax_matrix_huan_optimized(tuple(weights[:num+1]),tuple(biases[:num+1]),
-                        tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-                        tuple(neuron_states),
-                        num + 1,tuple(diags[:num+1]),
-                        x0,eps,p_n)
+                        UB, LB = get_layer_bound_relax_matrix_huan_optimized(tuple(weights[:num+1]),
+                                                                             tuple(biases[:num+1]),
+                                                                             tuple([UBs[0]]+preReLU_UB),
+                                                                             tuple([LBs[0]]+preReLU_LB),
+                                                                             tuple(neuron_states),
+                                                                             num + 1,
+                                                                             tuple(diags[:num+1]),
+                                                                             x0,
+                                                                             eps,
+                                                                             p_n)
                     if method == "adaptive":
-                        UB, LB = get_layer_bound_relax_adaptive_matrix_huan_optimized(tuple(weights[:num+1]),tuple(biases[:num+1]),
-                        tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-                        tuple(neuron_states),
-                        num + 1,tuple(diags[:num+1]),
-                        x0,eps,p_n)
+                        UB, LB = get_layer_bound_relax_adaptive_matrix_huan_optimized(tuple(weights[:num+1]),
+                                                                                      tuple(biases[:num+1]),
+                                                                                      tuple([UBs[0]]+preReLU_UB),
+                                                                                      tuple([LBs[0]]+preReLU_LB),
+                                                                                      tuple(neuron_states),
+                                                                                      num + 1,
+                                                                                      tuple(diags[:num+1]),
+                                                                                      x0,
+                                                                                      eps,
+                                                                                      p_n)
                     if method == "general":
-                        UB, LB = get_layer_bound_relax_adaptive_matrix_huan_general_optimized(tuple(weights[:num+1]),tuple(biases[:num+1]),
-                        tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-                        tuple(neuron_states),
-                        num + 1,tuple(bounds_ul[:num+1]),
-                        x0,eps,q_np,get_bounds)
+                        UB, LB = get_layer_bound_relax_adaptive_matrix_huan_general_optimized(tuple(weights[:num+1]),
+                                                                                              tuple(biases[:num+1]),
+                                                                                              tuple([UBs[0]]+preReLU_UB),
+                                                                                              tuple([LBs[0]]+preReLU_LB),
+                                                                                              tuple(neuron_states),
+                                                                                              num + 1,
+                                                                                              tuple(bounds_ul[:num+1]),
+                                                                                              x0,
+                                                                                              eps,
+                                                                                              q_np,
+                                                                                              get_bounds)
                     if num == 1 and use_quad:
                         # apply quadratic bound
-                        UB_quad, LB_quad = get_layer_bound_quad(tuple(weights[:num+1]),tuple(biases[:num+1]),
-                        tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-                        tuple(neuron_states),
-                        num + 1,
-                        x0,eps,p_np)
+                        UB_quad, LB_quad = get_layer_bound_quad(tuple(weights[:num+1]),
+                                                                tuple(biases[:num+1]),
+                                                                tuple([UBs[0]]+preReLU_UB),
+                                                                tuple([LBs[0]]+preReLU_LB),
+                                                                tuple(neuron_states),
+                                                                num + 1,
+                                                                x0,
+                                                                eps,
+                                                                p_np)
+
                         UB_prev = np.copy(UB)
                         LB_prev = np.copy(LB)
                         UB = np.minimum(UB, UB_quad)
@@ -820,30 +879,52 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
         #            True, numlayer)
         if method == "ours":
             # the last layer's weight has been replaced
-            UB, LB = get_layer_bound_relax_matrix_huan_optimized(tuple(weights[:num]+[W_last]),tuple(biases[:num]+[b_last]),
-            tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-            tuple(neuron_states),
-            numlayer,tuple(diags),
-            x0,eps,p_n)
+            UB, LB = get_layer_bound_relax_matrix_huan_optimized(tuple(weights[:num]+[W_last]),
+                                                                 tuple(biases[:num]+[b_last]),
+                                                                 tuple([UBs[0]]+preReLU_UB),
+                                                                 tuple([LBs[0]]+preReLU_LB),
+                                                                 tuple(neuron_states),
+                                                                 numlayer,
+                                                                 tuple(diags),
+                                                                 x0,
+                                                                 eps,
+                                                                 p_n)
         if method == "adaptive":
-            UB, LB = get_layer_bound_relax_adaptive_matrix_huan_optimized(tuple(weights[:num]+[W_last]),tuple(biases[:num]+[b_last]),
-            tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-            tuple(neuron_states),
-            numlayer,tuple(diags),
-            x0,eps,p_n)
+            UB, LB = get_layer_bound_relax_adaptive_matrix_huan_optimized(tuple(weights[:num]+[W_last]),
+                                                                          tuple(biases[:num]+[b_last]),
+                                                                          tuple([UBs[0]]+preReLU_UB),
+                                                                          tuple([LBs[0]]+preReLU_LB),
+                                                                          tuple(neuron_states),
+                                                                          numlayer,
+                                                                          tuple(diags),
+                                                                          x0,
+                                                                          eps,
+                                                                          p_n)
         if method == "general":
-            UB, LB = get_layer_bound_relax_adaptive_matrix_huan_general_optimized(tuple(weights[:num]+[W_last]),tuple(biases[:num]+[b_last]),
-            tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-            tuple(neuron_states),
-            numlayer,tuple(bounds_ul),
-            x0,eps,q_np,get_bounds)
+            UB, LB = get_layer_bound_relax_adaptive_matrix_huan_general_optimized(tuple(weights[:num]+[W_last]),
+                                                                                  tuple(biases[:num]+[b_last]),
+                                                                                  tuple([UBs[0]]+preReLU_UB),
+                                                                                  tuple([LBs[0]]+preReLU_LB),
+                                                                                  tuple(neuron_states),
+                                                                                  numlayer,
+                                                                                  tuple(bounds_ul),
+                                                                                  x0,
+                                                                                  eps,
+                                                                                  q_np,
+                                                                                  get_bounds)
+
         # quadratic bound
         if use_quad:
-            UB_quad, LB_quad = get_layer_bound_quad(tuple(weights[:num]+[W_last]),tuple(biases[:num]+[b_last]),
-            tuple([UBs[0]]+preReLU_UB), tuple([LBs[0]]+preReLU_LB), 
-            tuple(neuron_states),
-            numlayer,
-            x0,eps,p_np)
+            UB_quad, LB_quad = get_layer_bound_quad(tuple(weights[:num]+[W_last]),
+                                                    tuple(biases[:num]+[b_last]),
+                                                    tuple([UBs[0]]+preReLU_UB),
+                                                    tuple([LBs[0]]+preReLU_LB),
+                                                    tuple(neuron_states),
+                                                    numlayer,
+                                                    x0,
+                                                    eps,
+                                                    p_np)
+
             UB_prev = np.copy(UB)
             LB_prev = np.copy(LB)
             # print(UB_prev)
@@ -875,6 +956,8 @@ def compute_worst_bound(weights, biases, pred_label, target_label, x0, predictio
         
     if untargeted:
         for j in range(W.shape[0]):
+            if j == c:
+                print("c= {}, {:.2f} < f_c < {:.2f}".format(c, LB[c], UB[c]))
             if j < c:
                 print("    {:.2f} < f_c - f_{} < {:.2f}".format(LB[j], j, UB[j]))
                 if is_LP:
