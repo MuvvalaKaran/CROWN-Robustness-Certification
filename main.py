@@ -36,15 +36,15 @@ if __name__ == "__main__":
     #### parser ####
     parser = argparse.ArgumentParser(description='compute activation bound for CIFAR and MNIST')
     parser.add_argument('--model', 
-                        default="mnist",
-                        choices=["mnist", "cifar"],
+                        default="nn_veri",
+                        choices=["mnist", "cifar", "nn_veri"],
                         help='model to be used')
     parser.add_argument('--eps',
-                        default=0.005,
+                        default=1.00,
                         type=float,
                         help="epsilon for verification")
     parser.add_argument('--hidden',
-                        default=1024,
+                        default=8,
                         type=int,
                         help="number of hidden neurons per layer")
     parser.add_argument('--numlayer',
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                         choices=["i", "1", "2"],
                         help='perturbation norm: "i": Linf, "1": L1, "2": L2')
     parser.add_argument('--method',
-                        default="ours",
+                        default="adaptive",
                         type=str,
                         choices=["general", "ours", "adaptive", "spectral", "naive"],
                         help='"ours": our proposed bound, "spectral": spectral norm bounds, "naive": naive bound')
@@ -129,21 +129,25 @@ if __name__ == "__main__":
         suffix = ""
     else:
         suffix = "_" + args.modeltype
-    
-    # try models/mnist_3layer_relu_1024
-    activation = args.activation
-    modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix
-    if not os.path.isfile(modelfile):
-        # if not found, try models/mnist_3layer_relu_1024_1024
-        modelfile += ("_"+str(nhidden))*(args.numlayer-2) + suffix
-        # if still not found, try models/mnist_3layer_relu
+
+    if args.model == "nn_veri":
+        modelfile = "models/my_model"
+    else:
+        # try models/mnist_3layer_relu_1024
+        activation = args.activation
+        modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix
         if not os.path.isfile(modelfile):
-            modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + suffix
-            # if still not found, try models/mnist_3layer_relu_1024_best
+            # if not found, try models/mnist_3layer_relu_1024_1024
+            modelfile += ("_"+str(nhidden))*(args.numlayer-2) + suffix
+            # if still not found, try models/mnist_3layer_relu
             if not os.path.isfile(modelfile):
-                modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix + "_best"
+                modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + suffix
+                # if still not found, try models/mnist_3layer_relu_1024_best
                 if not os.path.isfile(modelfile):
-                    raise(RuntimeError("cannot find model file"))
+                    modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix + "_best"
+                    if not os.path.isfile(modelfile):
+                        raise(RuntimeError("cannot find model file"))
+
     if args.LP or args.LPFULL:
         # use gurobi solver
         import gurobipy as grb
@@ -153,11 +157,24 @@ if __name__ == "__main__":
     with tf.Session(config=config) as sess:   
         if args.model == "mnist":
             data = MNIST()
-            model = nl.NLayerModel([nhidden] * (args.numlayer - 1), modelfile, activation=activation)
+            model = nl.NLayerModel(params=[nhidden] * (args.numlayer - 1),
+                                   restore=modelfile,
+                                   activation=activation,
+                                   use_personal=False)
         elif args.model == "cifar":
             data = CIFAR()
-            model = nl.NLayerModel([nhidden] * (args.numlayer - 1), modelfile, image_size=32, image_channel=3,
-                                   activation=activation)
+            model = nl.NLayerModel(params=[nhidden] * (args.numlayer - 1),
+                                   restore=modelfile,
+                                   image_size=32,
+                                   image_channel=3,
+                                   activation=activation,
+                                   use_personal=False)
+        elif args.model == "nn_veri":
+            # write my own function here
+            model = nl.NLayerModel(params=[nhidden] * (args.numlayer - 1),
+                                   restore=modelfile,
+                                   use_personal=True,
+                                   input_dimension=2)
         else:
             raise(RuntimeError("unknown model: "+args.model))
                 
@@ -171,16 +188,17 @@ if __name__ == "__main__":
         # the weights and bias are saved in lists: weights and bias
         # weights[i-1] gives the ith layer of weight and so on
         weights, biases = get_weights_list(model)        
-        
-        inputs, targets, true_labels, true_ids, img_info = generate_data(data,
-                                                                         samples=args.numimage,
-                                                                         targeted=targeted,
-                                                                         random_and_least_likely=True,
-                                                                         target_type=target_type,
-                                                                         predictor=model.model.predict,
-                                                                         start=args.startimage)
-        # get the logit layer predictions
-        preds = model.model.predict(inputs)
+
+        if not args.model == "nn_veri":
+            inputs, targets, true_labels, true_ids, img_info = generate_data(data,
+                                                                             samples=args.numimage,
+                                                                             targeted=targeted,
+                                                                             random_and_least_likely=True,
+                                                                             target_type=target_type,
+                                                                             predictor=model.model.predict,
+                                                                             start=args.startimage)
+            # get the logit layer predictions
+            preds = model.model.predict(inputs)
 
         Nsamp = 0
         r_sum = 0.0
@@ -205,19 +223,24 @@ if __name__ == "__main__":
                                     biases=biases,
                                     pred_label=0,
                                     target_label=1,
-                                    x0=inputs[0],
-                                    predictions=preds[0],
+                                    x0=np.array([0, 0]),
+                                    predictions=0,
                                     numlayer=args.numlayer,
                                     p=args.norm,
-                                    eps=0.01,
+                                    eps=args.eps,
                                     method=args.method,
                                     lipsbnd=args.lipsbnd,
                                     is_LP=args.LP,
                                     is_LPFULL=args.LPFULL,
                                     untargeted=not targeted,
-                                    use_quad=args.quad)
+                                    use_quad=args.quad,
+                                    nn_veri=True)
 
-        print("starting robustness verification on {} images!".format(len(inputs)))
+                if args.model == "nn_veri":
+                    print("*******************************Done Computing bounds*******************************")
+                    sys.exit()
+
+        # print("starting robustness verification on {} images!".format(len(inputs)))
         sys.stdout.flush()
         sys.stderr.flush()
         total_time_start = time.time()

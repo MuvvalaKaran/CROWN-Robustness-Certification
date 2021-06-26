@@ -26,7 +26,18 @@ from setup_cifar import CIFAR
 import argparse
 import os
 
-def train(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, init=None, lr=0.01, decay=1e-5, momentum=0.9, activation="relu"):
+
+def train(data,
+          file_name,
+          params,
+          num_epochs=50,
+          batch_size=256,
+          train_temp=1,
+          init=None,
+          lr=0.01,
+          decay=1e-5,
+          momentum=0.9,
+          activation="relu"):
     """
     Train a n-layer simple network for MNIST and CIFAR
     """
@@ -68,19 +79,20 @@ def train(data, file_name, params, num_epochs=50, batch_size=256, train_temp=1, 
     model.summary()
     print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
     # run training with given dataset, and print progress
-    history = model.fit(data.train_data, data.train_labels,
-              batch_size=batch_size,
-              validation_data=(data.validation_data, data.validation_labels),
-              epochs=num_epochs,
-              shuffle=True)
-    
+    history = model.fit(data.train_data,
+                        data.train_labels,
+                        batch_size=batch_size,
+                        validation_data=(data.validation_data, data.validation_labels),
+                        epochs=num_epochs,
+                        shuffle=True)
 
     # save model to a file
     if file_name != None:
         model.save(file_name)
         print('model saved to ', file_name)
     
-    return {'model':model, 'history':history}
+    return {'model': model, 'history': history}
+
 
 if not os.path.isdir('models'):
     os.makedirs('models')
@@ -89,36 +101,37 @@ if not os.path.isdir('models'):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='train n-layer MNIST and CIFAR models')
     parser.add_argument('--model', 
-                default="mnist",
-                choices=["mnist", "cifar"],
-                help='model name')
+                        default="mnist",
+                        choices=["mnist", "cifar"],
+                        help='model name')
     parser.add_argument('--modelfile', 
-                default="",
-                help='override the model filename, use user specied one')
+                        default="",
+                        help='override the model filename, use user specied one')
     parser.add_argument('--modelpath', 
-                default="models_training",
-                help='folder for saving trained models')
+                        default="models_training",
+                        help='folder for saving trained models')
     parser.add_argument('layer_parameters',
-                nargs='+',
-                help='number of hidden units per layer')
+                        nargs='+',
+                        help='number of hidden units per layer')
     parser.add_argument('--activation',
-                default="relu",
-                choices=["relu", "tanh", "sigmoid", "arctan", "elu", "hard_sigmoid", "softplus"])
+                        default="relu",
+                        choices=["relu", "tanh", "sigmoid", "arctan", "elu", "hard_sigmoid", "softplus"])
     parser.add_argument('--lr',
-                default=0.01,
-                type=float,
-                help='learning rate')
+                        default=0.01,
+                        type=float,
+                        help='learning rate')
     parser.add_argument('--wd',
-                default=1e-5,
-                type=float,
-                help='weight decay')
+                        default=1e-5,
+                        type=float,
+                        help='weight decay')
     parser.add_argument('--epochs',
-                default=50,
-                type=int,
-                help='number of epochs')
+                        default=50,
+                        type=int,
+                        help='number of epochs')
     parser.add_argument('--overwrite',
-                action='store_true',
-                help='overwrite output file')
+                        action='store_true',
+                        help='overwrite output file')
+
     args = parser.parse_args()
     print(args)
     nlayers = len(args.layer_parameters) + 1
@@ -133,7 +146,14 @@ if __name__ == '__main__':
         data = MNIST()
     elif args.model == "cifar":
         data = CIFAR()
-    train(data, file_name=file_name, params=args.layer_parameters, num_epochs=args.epochs, lr=args.lr, decay=args.wd, activation=args.activation)
+
+    train(data,
+          file_name=file_name,
+          params=args.layer_parameters,
+          num_epochs=args.epochs,
+          lr=args.lr,
+          decay=args.wd,
+          activation=args.activation)
     # 2-layer models
 
     # train(MNIST(), file_name="models/mnist_2layer_relu", params=[10], num_epochs=50, lr=0.03, decay=1e-6)

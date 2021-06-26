@@ -7,15 +7,10 @@
 ## contained in the LICENCE file in this directory.
 ##
 
-import numpy as np
-import os
-import pickle
-import gzip
 import argparse
-import urllib.request
 
 from tensorflow.contrib.keras.api.keras.models import Sequential
-from tensorflow.contrib.keras.api.keras.layers import Dense, Dropout, Activation, Flatten, Lambda
+from tensorflow.contrib.keras.api.keras.layers import Dense, Dropout, Activation, Flatten, Lambda, Input
 from tensorflow.contrib.keras.api.keras.layers import Conv2D, MaxPooling2D
 from tensorflow.contrib.keras.api.keras.models import load_model
 from tensorflow.contrib.keras.api.keras import backend as K
@@ -23,19 +18,35 @@ import tensorflow as tf
 
 
 class NLayerModel:
-    def __init__(self, params, restore = None, session=None, use_log=False, image_size=28, image_channel=1, activation='relu'):
+    def __init__(self,
+                 params,
+                 restore=None,
+                 session=None,
+                 use_log=False,
+                 use_personal=True,
+                 input_dimension=2,
+                 image_size=28,
+                 image_channel=1,
+                 activation='relu'):
         
         self.image_size = image_size
         self.num_channels = image_channel
         self.num_labels = 10
         
         model = Sequential()
-        model.add(Flatten(input_shape=(image_size, image_size, image_channel)))
+
+        if not use_personal:
+            model.add(Flatten(input_shape=(image_size, image_size, image_channel)))
+
         # list of all hidden units weights
         self.U = []
+        counter = 1
         for param in params:
             # add each dense layer, and save a reference to list U
-            self.U.append(Dense(param))
+            if counter == 1:
+                self.U.append(Dense(param, input_shape=(input_dimension, )))
+            else:
+                self.U.append(Dense(param))
             model.add(self.U[-1])
             # ReLU activation
             # model.add(Activation(activation))
@@ -43,7 +54,14 @@ class NLayerModel:
                 model.add(Lambda(lambda x: tf.atan(x)))
             else:
                 model.add(Activation(activation))
-        self.W = Dense(10)
+
+            counter += 1
+
+        if use_personal:
+            self.W = Dense(input_dimension)
+        else:
+            self.W = Dense(10)
+
         model.add(self.W)
         # output log probability, used for black-box attack
         if use_log:
@@ -67,18 +85,18 @@ if __name__ == "__main__":
     import scipy.io as sio
     parser = argparse.ArgumentParser(description='save n-layer MNIST and CIFAR weights')
     parser.add_argument('--model', 
-                default="mnist",
-                choices=["mnist", "cifar"],
-                help='model name')
+                        default="mnist",
+                        choices=["mnist", "cifar"],
+                        help='model name')
     parser.add_argument('--modelfile', 
-                default="",
-                help='override the model filename, use user specied one')
+                        default="",
+                        help='override the model filename, use user specied one')
     parser.add_argument('layer_parameters',
-                nargs='+',
-                help='number of hidden units per layer')
+                        nargs='+',
+                        help='number of hidden units per layer')
     parser.add_argument('--activation',
-                default="relu",
-                choices=["relu", "tanh", "sigmoid", "elu", "hard_sigmoid", "softplus"])
+                        default="relu",
+                        choices=["relu", "tanh", "sigmoid", "elu", "hard_sigmoid", "softplus"])
     args = parser.parse_args()
     nlayers = len(args.layer_parameters) + 1
 
@@ -88,10 +106,10 @@ if __name__ == "__main__":
         if not args.modelfile:
             args.modelfile = "models/"+args.model+"_"+str(nlayers)+"layer_"+args.activation
         if args.model == "mnist":
-            model =  NLayerModel(args.layer_parameters, args.modelfile, sess)
-            #model =  NLayerModel(args.layer_parameters, "models/mnist_"+str(nlayers)+"layer_"+args.activation)
+            model = NLayerModel(args.layer_parameters, args.modelfile, sess)
+            #model = NLayerModel(args.layer_parameters, "models/mnist_"+str(nlayers)+"layer_"+args.activation)
         elif args.model == "cifar":
-            model =  NLayerModel(args.layer_parameters, args.modelfile, sess, image_size=32, image_channel=3)
+            model = NLayerModel(args.layer_parameters, args.modelfile, sess, image_size=32, image_channel=3)
         else:
             raise(RuntimeError("Unknow model"))
 

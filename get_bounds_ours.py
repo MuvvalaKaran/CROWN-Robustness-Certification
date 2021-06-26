@@ -114,7 +114,7 @@ def init_layer_bound_relax_matrix_huan(Ws):
 
 # adaptive matrix version of get_layer_bound_relax
 @jit(nopython=True)
-def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws,bs,UBs,LBs,neuron_state,nlayer,diags,x0,eps,p_n):
+def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuron_state, nlayer, diags, x0, eps, p_n):
     assert nlayer >= 2
     assert nlayer == len(Ws) == len(bs) == len(UBs) == len(LBs) == (len(neuron_state) + 1) == len(diags)
 
@@ -241,7 +241,7 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws,bs,UBs,LBs,neuron_st
 
 # matrix version of get_layer_bound_relax
 @jit(nopython=True)
-def get_layer_bound_relax_matrix_huan_optimized(Ws,bs,UBs,LBs,neuron_state,nlayer,diags,x0,eps,p_n):
+def get_layer_bound_relax_matrix_huan_optimized(Ws, bs, UBs, LBs, neuron_state, nlayer, diags, x0, eps, p_n):
     assert nlayer >= 2
     assert nlayer == len(Ws) == len(bs) == len(UBs) == len(LBs) == (len(neuron_state) + 1) == len(diags)
 
@@ -632,18 +632,21 @@ def compute_worst_bound(weights,
                         predictions,
                         numlayer,
                         p="i",
-                        eps = 0.005,
+                        eps=0.005,
                         method="ours",
                         lipsbnd="disable",
                         is_LP=False,
                         is_LPFULL=False,
-                        untargeted = False,
-                        use_quad = False,
-                        activation = "relu"):
+                        untargeted=False,
+                        use_quad=False,
+                        activation="relu",
+                        nn_veri=False):
     ### input example x0 
     # 784 by 1 (cifar: 3072 by 1)
     x0 = x0.flatten().astype(np.float32)
     # currently only supports p = "i"
+    if nn_veri:
+        print(f"Using {eps} as bounds for each dimension.")
     UB_N0 = x0 + eps
     LB_N0 = x0 - eps
     
@@ -674,8 +677,9 @@ def compute_worst_bound(weights,
     #save_bnd = {'UB_N0': UB_N0, 'LB_N0': LB_N0}
     neuron_states = []
 
-    c = pred_label # c = 0~9
-    j = target_label 
+    if not nn_veri:
+        c = pred_label # c = 0~9
+        j = target_label
 
     # create diag matrices
     if method == "general":
@@ -863,15 +867,20 @@ def compute_worst_bound(weights,
     W = weights[num]
     bias = biases[num]
     if untargeted:
-        ind = np.ones(len(W), bool)
-        ind[c] = False
-        W_last = W[c] - W[ind]
-        b_last = bias[c] - bias[ind]
+        # pass
+        # ind = np.ones(len(W), bool)
+        # ind[c] = False
+        # W_last = W[c] - W[ind]
+        # b_last = bias[c] - bias[ind]
+
+        W_last = W
+        b_last = bias
+
     else:
         W_last = np.expand_dims(W[c] - W[j], axis=0)
         b_last = np.expand_dims(bias[c] - bias[j], axis=0)
     if method == "naive":
-        UB, LB = get_layer_bound(W_last,b_last,UB,LB,True)
+        UB, LB = get_layer_bound(W_last, b_last, UB, LB, True)
     elif method == "ours" or method == "adaptive" or method == "general":
         # UB, LB = get_layer_bound_relax_matrix_huan(weights[:num]+[W_last],biases[:num]+[b_last],
         #            [UBs[0]]+preReLU_UB,[LBs[0]]+preReLU_LB,
@@ -944,20 +953,46 @@ def compute_worst_bound(weights,
     # after all bounds has been computed, we run a LP to find the last layer bounds
     if is_LP or is_LPFULL:
         if untargeted:
-            LP_UB, LP_LB, LP_LBs = get_layer_bound_LP(weights,biases,[UBs[0]]+preReLU_UB,
-            [LBs[0]]+preReLU_LB, x0, eps, p, neuron_states,numlayer,c,j,False,True)
+            LP_UB, LP_LB, LP_LBs = get_layer_bound_LP(weights,
+                                                      biases,
+                                                      [UBs[0]]+preReLU_UB,
+                                                      [LBs[0]]+preReLU_LB,
+                                                      x0,
+                                                      eps,
+                                                      p,
+                                                      neuron_states,
+                                                      numlayer,
+                                                      c,
+                                                      j,
+                                                      False,
+                                                      True)
             LP_UBs = np.empty_like(LP_LBs)
             LP_UBs[:] = np.inf
         else:
-            LP_UB, LP_LB, LP_bnd_gx0 = get_layer_bound_LP(weights,biases,[UBs[0]]+preReLU_UB,
-            [LBs[0]]+preReLU_LB, x0, eps, p, neuron_states,numlayer,c,j,False,False)
+            LP_UB, LP_LB, LP_bnd_gx0 = get_layer_bound_LP(weights,
+                                                          biases,
+                                                          [UBs[0]]+preReLU_UB,
+                                                          [LBs[0]]+preReLU_LB,
+                                                          x0,
+                                                          eps,
+                                                          p,
+                                                          neuron_states,
+                                                          numlayer,
+                                                          c,
+                                                          j,
+                                                          False,
+                                                          False)
         # print("c = {}, {:.2f} < f_c < {:.2f}".format(c, LP_LB[c], LP_UB[c]))
         # print("j = {}, {:.2f} < f_j < {:.2f}".format(j, LP_LB[j], LP_UB[j])) 
-        
-    if untargeted:
+
+    if nn_veri:
         for j in range(W.shape[0]):
-            if j == c:
-                print("c= {}, {:.2f} < f_c < {:.2f}".format(c, LB[c], UB[c]))
+            print("{:.5f} < f_{} < {:.5f}".format(LB[j], j, UB[j]))
+
+        return
+
+    if not nn_veri and untargeted:
+        for j in range(W.shape[0]):
             if j < c:
                 print("    {:.2f} < f_c - f_{} < {:.2f}".format(LB[j], j, UB[j]))
                 if is_LP:
@@ -981,7 +1016,7 @@ def compute_worst_bound(weights,
     # Now "weights" are already transposed, so can pass weights directly to compute_max_grad_norm. 
     # Note however, if we transpose weights again, compute_max_grad_norm still works, but the result is different   
     # compute lipschitz bound
-    if untargeted:
+    if not nn_veri and untargeted:
         g_x0 = []
         for j in range(W.shape[0]):
             if j < c:
