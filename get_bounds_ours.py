@@ -866,16 +866,15 @@ def compute_worst_bound(weights,
     num = numlayer - 1
     W = weights[num]
     bias = biases[num]
-    if untargeted:
-        # pass
-        # ind = np.ones(len(W), bool)
-        # ind[c] = False
-        # W_last = W[c] - W[ind]
-        # b_last = bias[c] - bias[ind]
-
+    if nn_veri and untargeted:
         W_last = W
         b_last = bias
-
+    elif untargeted:
+        pass
+        ind = np.ones(len(W), bool)
+        ind[c] = False
+        W_last = W[c] - W[ind]
+        b_last = bias[c] - bias[ind]
     else:
         W_last = np.expand_dims(W[c] - W[j], axis=0)
         b_last = np.expand_dims(bias[c] - bias[j], axis=0)

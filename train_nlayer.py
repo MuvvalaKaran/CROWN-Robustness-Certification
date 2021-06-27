@@ -77,7 +77,7 @@ def train(data,
                   metrics=['accuracy'])
     
     model.summary()
-    print("Traing a {} layer model, saving to {}".format(len(params) + 1, file_name))
+    print("Training a {} layer model, saving to {}".format(len(params) + 1, file_name))
     # run training with given dataset, and print progress
     history = model.fit(data.train_data,
                         data.train_labels,

@@ -131,7 +131,8 @@ if __name__ == "__main__":
         suffix = "_" + args.modeltype
 
     if args.model == "nn_veri":
-        modelfile = "models/my_model"
+        path = os.path.dirname(os.path.abspath(__file__)) + "/models/my_model"
+        modelfile = path
     else:
         # try models/mnist_3layer_relu_1024
         activation = args.activation
