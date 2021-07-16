@@ -210,7 +210,12 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
     # this computation (UB1_final, LB1_final) should be the same as UB_final and LB_final.
     # However, this computation seem to have numerical error due to the different scale of x0 and eps then
     # the dual norm calculation
-
+    print("*****************************************")
+    print("A upper bound matrix")
+    print(A_UB)
+    print("A lower bound matrix")
+    print(A_LB)
+    print("*****************************************")
     Ax0_UB = np.dot(A_UB,x0)
     Ax0_LB = np.dot(A_LB,x0)
     if p_n == 105: # means p == "i":      
@@ -678,7 +683,7 @@ def compute_worst_bound(weights,
     neuron_states = []
 
     if not nn_veri:
-        c = pred_label # c = 0~9
+        c = pred_label  # c = 0~9
         j = target_label
 
     # create diag matrices
