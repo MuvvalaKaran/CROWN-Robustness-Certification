@@ -7,6 +7,10 @@
 ## contained in the LICENCE file in this directory.
 ## 
 
+# ignore warning that the numpy throws due to numpy
+import warnings
+warnings.filterwarnings("ignore")
+
 import save_nlayer_weights as nl
 import numpy as np
 
@@ -20,8 +24,27 @@ import os
 import sys
 import random
 import time
+import logging
+
+# tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+# tf.autograph.set_verbosity(0)
+
+def set_tf_loglevel(level):
+    if level >= logging.FATAL:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    if level >= logging.ERROR:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    if level >= logging.WARNING:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+    else:
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+    logging.getLogger('tensorflow').setLevel(level)
 
 # from setup_imagenet import ImageNet, ImageNetModel
+set_tf_loglevel(logging.FATAL)
+
+# to re-enable error loggin use this
+# set_tf_loglevel(logging.INFO)
 
 from utils import generate_data
 from PIL import Image
@@ -39,8 +62,12 @@ if __name__ == "__main__":
                         default="nn_veri",
                         choices=["mnist", "cifar", "nn_veri"],
                         help='model to be used')
+    parser.add_argument('--init_state',
+                        default='[0, 0]',
+                        help='initial state of the system. Please enter as a list e.g init state at 0,0 will be [0,0].'
+                             'Note: Do not leave empty space after the comma')
     parser.add_argument('--eps',
-                        default=1.00,
+                        default=0.1,
                         type=float,
                         help="epsilon for verification")
     parser.add_argument('--hidden',
@@ -108,6 +135,11 @@ if __name__ == "__main__":
                         choices=["relu", "tanh", "sigmoid", "arctan", "elu", "hard_sigmoid", "softplus"])
 
     args = parser.parse_args()
+
+    # parse init_state which is a string into a number
+    init_state = list(map(float, args.init_state.strip('[]').split(',')))
+    # init_state = list(map(float, args.init_state.strip().split()))[:2]
+
     nhidden = args.hidden
     # quadratic bound only works for ReLU
     assert ((not args.quad) or args.activation == "relu")
@@ -131,23 +163,24 @@ if __name__ == "__main__":
         suffix = "_" + args.modeltype
 
     if args.model == "nn_veri":
+        activation = "relu"
         path = os.path.dirname(os.path.abspath(__file__)) + "/models/my_model"
         modelfile = path
-    else:
-        # try models/mnist_3layer_relu_1024
-        activation = args.activation
-        modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix
-        if not os.path.isfile(modelfile):
-            # if not found, try models/mnist_3layer_relu_1024_1024
-            modelfile += ("_"+str(nhidden))*(args.numlayer-2) + suffix
-            # if still not found, try models/mnist_3layer_relu
-            if not os.path.isfile(modelfile):
-                modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + suffix
-                # if still not found, try models/mnist_3layer_relu_1024_best
-                if not os.path.isfile(modelfile):
-                    modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix + "_best"
-                    if not os.path.isfile(modelfile):
-                        raise(RuntimeError("cannot find model file"))
+    # else:
+    #     # try models/mnist_3layer_relu_1024
+    #     activation = args.activation
+    #     modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix
+    #     if not os.path.isfile(modelfile):
+    #         # if not found, try models/mnist_3layer_relu_1024_1024
+    #         modelfile += ("_"+str(nhidden))*(args.numlayer-2) + suffix
+    #         # if still not found, try models/mnist_3layer_relu
+    #         if not os.path.isfile(modelfile):
+    #             modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + suffix
+    #             # if still not found, try models/mnist_3layer_relu_1024_best
+    #             if not os.path.isfile(modelfile):
+    #                 modelfile = "models/" + args.model + "_" + str(args.numlayer) + "layer_" + activation + "_" + str(nhidden) + suffix + "_best"
+    #                 if not os.path.isfile(modelfile):
+    #                     raise(RuntimeError("cannot find model file"))
 
     if args.LP or args.LPFULL:
         # use gurobi solver
@@ -224,7 +257,7 @@ if __name__ == "__main__":
                                     biases=biases,
                                     pred_label=0,
                                     target_label=1,
-                                    x0=np.array([0, 0]),
+                                    x0=np.array(init_state),
                                     predictions=0,
                                     numlayer=args.numlayer,
                                     p=args.norm,
