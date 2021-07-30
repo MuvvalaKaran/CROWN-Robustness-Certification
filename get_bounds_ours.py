@@ -225,12 +225,13 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.sum(np.abs(A_UB[j])) # L1 norm of A[j]
             dualnorm_Aj_lb = np.sum(np.abs(A_LB[j])) # L1 norm of A[j]
+            print("Different Biases - Upper Bound")
+            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            print("Different Biases - lower Bound")
+            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
-            print("Different Biases - Upper Bound")
-            print(eps*dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(eps*dualnorm_Aj_lb)
+
         
             # eps*dualnorm_Aj and Ax0[j] don't seem to have big difference
             #print("eps*dualnorm_Aj = {}, Ax0[j] = {}".format(eps*dualnorm_Aj, Ax0[j]))
@@ -238,23 +239,24 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.max(np.abs(A_UB[j])) # Linf norm of A[j]
             dualnorm_Aj_lb = np.max(np.abs(A_LB[j])) # Linf norm of A[j]
+            print("Different Biases - Upper Bound")
+            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            print("Different Biases - lower Bound")
+            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
-            print("Different Biases - Upper Bound")
-            print(eps * dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(eps * dualnorm_Aj_lb)
+
     elif p_n == 2: # means p == "2"
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.linalg.norm(A_UB[j]) # L2 norm of A[j]
             dualnorm_Aj_lb = np.linalg.norm(A_LB[j]) # L2 norm of A[j]
+            print("Different Biases - Upper Bound")
+            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            print("Different Biases - lower Bound")
+            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
-            print("Different Biases - Upper Bound")
-            print(eps * dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(eps * dualnorm_Aj_lb)
-    
+
     return UB_final, LB_final
 
 
