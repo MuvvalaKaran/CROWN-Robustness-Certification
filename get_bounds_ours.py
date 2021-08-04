@@ -119,7 +119,7 @@ def init_layer_bound_relax_matrix_huan(Ws):
     return diags
 
 # adaptive matrix version of get_layer_bound_relax
-@jit(nopython=True)
+# @jit(nopython=True)
 def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuron_state, nlayer, diags, x0, eps, p_n):
     assert nlayer >= 2
     assert nlayer == len(Ws) == len(bs) == len(UBs) == len(LBs) == (len(neuron_state) + 1) == len(diags)
@@ -279,16 +279,16 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
             'explicit_lb': LB_final
         }
     )
-    _file_name = "model_params.yaml"
+    _file_name = "/model_params.yaml"
 
     _file_path = ROOT_PATH + "/models" + _file_name
 
-    try:
-        with open(_file_path, 'w') as outfile:
-            yaml.dump(list(data_dict), outfile, default_flow_style=False, sort_keys=False)
-    except FileNotFoundError:
-        print(FileNotFoundError)
-        print("Make sure you have a models folder inside the CROWN toolbox's root folder.")
+    # try:
+    with open(_file_path, 'w') as outfile:
+        yaml.dump(data_dict, outfile, default_flow_style=False, sort_keys=False)
+    # except FileNotFoundError:
+    #     print(FileNotFoundError)
+    #     print("Make sure you have a models folder inside the CROWN toolbox's root folder.")
 
     return UB_final, LB_final
 
