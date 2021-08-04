@@ -7,19 +7,25 @@
 ## contained in the LICENCE file in this directory.
 ##
 
+import yaml
 import sys
+import copy
+import os
+
 from numba import jit
 import numpy as np
 from get_bounds_others import get_layer_bound_LP
 from get_bounds_quad import get_layer_bound_quad, get_layer_bound_quad_both
 from get_bounds_general import get_general_bounds, get_relu_bounds, get_tanh_bounds, get_sigmoid_bounds, get_arctan_bounds, get_layer_bound_relax_adaptive_matrix_huan_general_optimized, init_layer_bound_relax_matrix_huan_general
 
+ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
+
 # use dictionary to save weights and bias
 # use list to save "transposed" weights and bias
 # e.g. for a 2 layer network with nodes 784 (input), 1024 (hidden), 10
 # after transposed, shape of weights[0] = 1024*784, weights[1] = 10*1024 
 def get_weights_list(model):
-    
+
     weights = []
     bias = []
     
@@ -206,17 +212,21 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
     # step 6: bounding A0 * x
     x_UB = np.empty_like(UBs[0])
     x_LB = np.empty_like(LBs[0])
-    
+
+    pre_UB_final = copy.deepcopy(UB_final)
+    pre_LB_final = copy.deepcopy(LB_final)
     # this computation (UB1_final, LB1_final) should be the same as UB_final and LB_final.
     # However, this computation seem to have numerical error due to the different scale of x0 and eps then
     # the dual norm calculation
     print("*****************************************")
     print("A upper bound matrix")
     print(A_UB)
-    print(constants_ub)
+    print("Bias upper bound matrix ")
+    print(UB_final)
     print("A lower bound matrix")
     print(A_LB)
-    print(constants_lb)
+    print("Bias lower bound matrix")
+    print(LB_final)
     print("*****************************************")
     Ax0_UB = np.dot(A_UB,x0)
     Ax0_LB = np.dot(A_LB,x0)
@@ -225,10 +235,10 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.sum(np.abs(A_UB[j])) # L1 norm of A[j]
             dualnorm_Aj_lb = np.sum(np.abs(A_LB[j])) # L1 norm of A[j]
-            print("Different Biases - Upper Bound")
-            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
+            # print("Different Biases - Upper Bound")
+            # print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            # print("Different Biases - lower Bound")
+            # print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
 
@@ -239,10 +249,10 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.max(np.abs(A_UB[j])) # Linf norm of A[j]
             dualnorm_Aj_lb = np.max(np.abs(A_LB[j])) # Linf norm of A[j]
-            print("Different Biases - Upper Bound")
-            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
+            # print("Different Biases - Upper Bound")
+            # print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            # print("Different Biases - lower Bound")
+            # print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
 
@@ -250,12 +260,35 @@ def get_layer_bound_relax_adaptive_matrix_huan_optimized(Ws, bs, UBs, LBs, neuro
         for j in range(A_UB.shape[0]):        
             dualnorm_Aj_ub = np.linalg.norm(A_UB[j]) # L2 norm of A[j]
             dualnorm_Aj_lb = np.linalg.norm(A_LB[j]) # L2 norm of A[j]
-            print("Different Biases - Upper Bound")
-            print(UB_final[j], "+", eps * dualnorm_Aj_ub)
-            print("Different Biases - lower Bound")
-            print(LB_final[j], "-", eps * dualnorm_Aj_lb)
+            # print("Different Biases - Upper Bound")
+            # print(UB_final[j], "+", eps * dualnorm_Aj_ub)
+            # print("Different Biases - lower Bound")
+            # print(LB_final[j], "-", eps * dualnorm_Aj_lb)
             UB_final[j] += (Ax0_UB[j]+eps*dualnorm_Aj_ub)
             LB_final[j] += (Ax0_LB[j]-eps*dualnorm_Aj_lb)
+
+    # create a dictionary instance that we can dump using yaml
+    data_dict = dict(
+        eps=eps,
+        A_ub=A_UB,
+        A_lb=A_LB,
+        B_ub=pre_UB_final,
+        B_lb=pre_LB_final,
+        explict_bounds={
+            'explicit_ub': UB_final,
+            'explicit_lb': LB_final
+        }
+    )
+    _file_name = "model_params.yaml"
+
+    _file_path = ROOT_PATH + "/models" + _file_name
+
+    try:
+        with open(_file_path, 'w') as outfile:
+            yaml.dump(list(data_dict), outfile, default_flow_style=False, sort_keys=False)
+    except FileNotFoundError:
+        print(FileNotFoundError)
+        print("Make sure you have a models folder inside the CROWN toolbox's root folder.")
 
     return UB_final, LB_final
 
